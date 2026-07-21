@@ -3,4 +3,5 @@ version = "1.0.0"
 publish = false
 
 [workspace]
-members = ["raft-rs"]
+resolver = "3"
+members = ["raft-rs", "kv"]
