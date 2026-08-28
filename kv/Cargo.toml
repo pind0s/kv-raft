@@ -9,7 +9,6 @@ moka = { version = "0.12.15", features = ["sync"] }
 thiserror = "2.0.18"
 twox-hash = { version = "2.1.2", features = ["xxhash3_128", "std"] }
 zerocopy = { version = "0.8.50", features = ["simd", "derive"] }
-bon = "3.9.3"
 
 [dev-dependencies]
 tempfile = "3.27.0"

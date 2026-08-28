@@ -7,15 +7,10 @@ use crate::pages::header::{CommitSlot, DbHeader};
 use crate::pages::page::Page;
 use crate::pages::page_io::PageIO;
 use crate::pages::page_manager::PageManager;
-use crate::pages::{
-    PageId, DEFAULT_PAGE_SIZE_U64, HEADER_PAGE_ID, INITIAL_ROOT_PAGE_ID, MIN_PAGE_SIZE,
-};
+use crate::pages::{HEADER_PAGE_ID, INITIAL_ROOT_PAGE_ID, MIN_PAGE_SIZE, PageId};
 use crate::transactions::{ReadTracker, ReadTransaction, TransactionId, WriteTransaction};
-use bon::bon;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, RwLock};
-
-const DEFAULT_CACHE_CAPACITY: usize = 1024 * 1024;
 
 #[derive(Clone)]
 pub struct Database {
@@ -34,14 +29,9 @@ pub(crate) struct CommitState {
     snapshot: RwLock<(PageId, TransactionId)>,
 }
 
-#[bon]
 impl Database {
-    #[builder(finish_fn = build)]
-    pub fn open_existing(
-        #[builder(start_fn, into)] path: PathBuf,
-        #[builder(default = DEFAULT_CACHE_CAPACITY)] cache_capacity: usize,
-    ) -> Result<Self> {
-        let file = Arc::new(FileHandler::open_existing(path)?);
+    pub fn open_existing(path: impl Into<PathBuf>, cache_capacity: usize) -> Result<Self> {
+        let file = Arc::new(FileHandler::open_existing(path.into())?);
         let header = Self::read_header(&file)?;
         let page_io = PageIO::new(file.clone(), header.page_size(), cache_capacity);
         let header = Self::recover_header(&file, &page_io, header)?;
@@ -49,15 +39,14 @@ impl Database {
         Self::from_parts(file, page_io, header)
     }
 
-    #[builder(finish_fn = build)]
     pub fn open_new(
-        #[builder(start_fn, into)] path: PathBuf,
-        #[builder(default = DEFAULT_PAGE_SIZE_U64)] page_size: u64,
-        #[builder(default = DEFAULT_CACHE_CAPACITY)] cache_capacity: usize,
+        path: impl Into<PathBuf>,
+        page_size: u64,
+        cache_capacity: usize,
     ) -> Result<Self> {
         Self::validate_page_size(page_size)?;
 
-        let file = Arc::new(FileHandler::open_new(path)?);
+        let file = Arc::new(FileHandler::open_new(path.into())?);
         let page_io = PageIO::new(file.clone(), page_size, cache_capacity);
         let header = Self::new_file(&file, &page_io)?;
 
