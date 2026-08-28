@@ -4,4 +4,4 @@ publish = false
 
 [workspace]
 resolver = "3"
-members = ["raft-rs", "kv"]
+members = ["raft-rs", "kv", "example"]

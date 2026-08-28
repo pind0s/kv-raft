@@ -227,6 +227,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "kv-raft-example"
+version = "1.0.0"
+dependencies = [
+ "async-trait",
+ "kv",
+ "raft-rs",
+ "serde",
+ "tempfile",
+ "thiserror",
+ "tokio",
+]
+
+[[package]]
 name = "libc"
 version = "0.2.188"
 source = "registry+https://github.com/rust-lang/crates.io-index"
