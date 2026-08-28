@@ -260,6 +260,8 @@ where
         };
 
         self.persist_state();
+        self.advance_commit();
+        self.apply_committed();
         // immediately send heartbeat
         self.on_heartbeat();
     }
@@ -639,6 +641,10 @@ where
                         self.pending_applies.insert(index, reply);
                         self.persist_state();
 
+                        // in a single node cluster, the leader can immediately commit the command
+                        self.advance_commit();
+                        self.apply_committed();
+
                         // immediately try to replicate new command to followers
                         self.on_heartbeat();
                     }
@@ -1011,6 +1017,31 @@ mod tests {
                 other => panic!("expected AppendRequest, got {other:?}"),
             }
         }
+    }
+
+    #[tokio::test]
+    async fn single_node_elects_leader_and_commits_client_command() {
+        let (mut node, _, _) = test_node(1, vec![]);
+
+        node.become_candidate().await;
+
+        assert_matches!(node.role, Role::Leader { .. });
+        assert_eq!(node.commit_index, 1);
+        assert_eq!(node.last_applied, 1);
+        assert_noop(&node.log[1], 1);
+
+        let (reply, rx) = oneshot::channel();
+        node.client_command(ClientCommands::Apply {
+            command: TestCommand::Inc(4),
+            reply,
+        })
+        .await;
+
+        assert_eq!(rx.await.unwrap().unwrap(), TestOutput::Value(4));
+        assert_eq!(node.commit_index, 2);
+        assert_eq!(node.last_applied, 2);
+        assert_eq!(node.state_machine.value, 4);
+        assert_command(&node.log[2], 1, TestCommand::Inc(4));
     }
 
     #[tokio::test]
