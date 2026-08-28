@@ -4,7 +4,7 @@ use crate::transactions::TransactionId;
 use zerocopy::byteorder::{LE, U128};
 use zerocopy::{FromBytes, Immutable, IntoBytes, KnownLayout, U64};
 
-const HEADER_MAGIC: [u8; 8] = *b"RUSTDB01";
+const HEADER_MAGIC: [u8; 8] = *b"PIND0S:)";
 const FIRST_COMMIT_SLOT: U64<LE> = U64::new(0);
 
 #[derive(Debug, Copy, Clone, FromBytes, IntoBytes, Immutable, KnownLayout)]
