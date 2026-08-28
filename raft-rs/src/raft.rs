@@ -129,7 +129,7 @@ where
                 }
 
                 _ = heartbeat_timer.tick(), if self.role.is_leader() => {
-                    self.on_heartbeat().await;
+                    self.on_heartbeat();
                 }
 
                 msg = self.message_receiver.recv() => {
@@ -185,9 +185,9 @@ where
 
     async fn handle_message(&mut self, envelope: RaftEnvelope<RaftType>) {
         match envelope.message {
-            RaftMessage::AppendResponse(msg) => self.append_response(envelope.from, msg),
-            RaftMessage::AppendRequest(msg) => self.append_request(envelope.from, msg).await,
-            RaftMessage::VoteRequest(msg) => self.vote_request(envelope.from, msg).await,
+            RaftMessage::AppendResponse(msg) => self.append_response(envelope.from, &msg),
+            RaftMessage::AppendRequest(msg) => self.append_request(envelope.from, msg),
+            RaftMessage::VoteRequest(msg) => self.vote_request(envelope.from, msg),
             RaftMessage::VoteResponse(msg) => self.vote_response(msg).await,
         }
     }
@@ -233,7 +233,7 @@ where
         });
 
         self.persist_state();
-        self.broadcast_message(request).await;
+        self.broadcast_message(request);
     }
 
     async fn become_leader(&mut self) {
@@ -261,10 +261,10 @@ where
 
         self.persist_state();
         // immediately send heartbeat
-        self.on_heartbeat().await;
+        self.on_heartbeat();
     }
 
-    fn append_response(&mut self, from: NodeId, msg: AppendResponse) {
+    fn append_response(&mut self, from: NodeId, msg: &AppendResponse) {
         if msg.term < self.current_term {
             // stale response, ignore
             return;
@@ -294,7 +294,7 @@ where
         self.apply_committed();
     }
 
-    async fn append_request(&mut self, from: NodeId, msg: AppendRequest<RaftType>) {
+    fn append_request(&mut self, from: NodeId, msg: AppendRequest<RaftType>) {
         if msg.term < self.current_term {
             info!(
                 "stale AppendRequest with term {}, while current term is {}, ignoring",
@@ -388,7 +388,7 @@ where
         self.send_message(from, RaftMessage::AppendResponse(response));
     }
 
-    async fn vote_request(&mut self, from: NodeId, msg: VoteRequest) {
+    fn vote_request(&mut self, from: NodeId, msg: VoteRequest) {
         info!("received VoteRequest from {}: {:?}", from, msg);
 
         if msg.term < self.current_term {
@@ -478,7 +478,7 @@ where
         }
     }
 
-    async fn on_heartbeat(&mut self) {
+    fn on_heartbeat(&self) {
         for peer_id in &self.peer_ids {
             let Role::Leader { next_index, .. } = &self.role else {
                 unreachable!("handling heartbeat while not a leader");
@@ -604,7 +604,7 @@ where
         let _ = sender.try_send(message);
     }
 
-    async fn broadcast_message(&self, message: RaftMessage<RaftType>) {
+    fn broadcast_message(&self, message: RaftMessage<RaftType>) {
         for peer_id in &self.peer_ids {
             self.send_message(*peer_id, message.clone());
         }
@@ -640,7 +640,7 @@ where
                         self.persist_state();
 
                         // immediately try to replicate new command to followers
-                        self.on_heartbeat().await;
+                        self.on_heartbeat();
                     }
 
                     Err(err) => {
@@ -783,8 +783,10 @@ mod tests {
             static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
 
             let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
-            let path =
-                env::temp_dir().join(format!("raft-rs-test-state-{}-{id}.raft-rs", std::process::id()));
+            let path = env::temp_dir().join(format!(
+                "raft-rs-test-state-{}-{id}.raft-rs",
+                std::process::id()
+            ));
 
             Self { path }
         }
@@ -942,7 +944,7 @@ mod tests {
         let sent = recv_sent_messages(&mut sent_rx, 2).await;
         assert_eq!(sent.len(), 2);
 
-        for envelope in sent.iter() {
+        for envelope in &sent {
             assert_eq!(envelope.from, 1);
 
             match &envelope.message {
@@ -996,7 +998,7 @@ mod tests {
         let sent = recv_sent_messages(&mut sent_rx, 2).await;
         assert_eq!(sent.len(), 2);
 
-        for envelope in sent.iter() {
+        for envelope in &sent {
             match &envelope.message {
                 RaftMessage::AppendRequest(request) => {
                     assert_eq!(request.term, 1);

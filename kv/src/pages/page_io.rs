@@ -12,7 +12,11 @@ pub(crate) struct PageIO {
 }
 
 impl PageIO {
-    pub(crate) fn new(file_handler: Arc<FileHandler>, page_size: u64, cache_capacity: usize) -> Self {
+    pub(crate) fn new(
+        file_handler: Arc<FileHandler>,
+        page_size: u64,
+        cache_capacity: usize,
+    ) -> Self {
         PageIO {
             file_handler,
             page_cache: PageCache::new(cache_capacity),
